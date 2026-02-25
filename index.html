@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SPIN OF FATE</title>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
-  <!-- Cloudflare Turnstile -->
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -22,7 +21,7 @@
     <p class="verify-desc">Complete the verification below to continue.</p>
     <div class="turnstile-wrap">
       <div class="cf-turnstile"
-           data-sitekey="0x4AAAAAACiO9JqfXdXJwES5"
+           data-sitekey="YOUR_TURNSTILE_SITE_KEY"
            data-callback="onTurnstileSuccess"
            data-theme="dark">
       </div>
@@ -67,8 +66,9 @@
   </div>
 
   <div class="data-section">
-    <div class="data-title">Leaderboard</div>
-    <table id="data-table">
+    <div class="data-title">Global Leaderboard</div>
+    <div id="loading-state" class="empty-state">Loading...</div>
+    <table id="data-table" style="display:none;">
       <thead>
         <tr>
           <th>#</th>
@@ -77,9 +77,7 @@
           <th>Time</th>
         </tr>
       </thead>
-      <tbody id="data-body">
-        <tr><td colspan="4" class="empty-state">No data yet</td></tr>
-      </tbody>
+      <tbody id="data-body"></tbody>
     </table>
   </div>
 </div>

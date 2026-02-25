@@ -21,14 +21,9 @@ const BADGE_COLORS = {
 let currentAngle = 0;
 let spinning = false;
 let playerName = '';
-let verified = false;
-let allData = JSON.parse(localStorage.getItem('spinData') || '[]');
 
-// ===== TURNSTILE CALLBACK =====
-// Called automatically by Cloudflare Turnstile when user passes verification
+// ===== TURNSTILE =====
 function onTurnstileSuccess(token) {
-  verified = true;
-  // Fade out verify page, show intro
   const verifyPage = document.getElementById('verify-page');
   verifyPage.style.transition = 'opacity 0.5s ease';
   verifyPage.style.opacity = '0';
@@ -38,7 +33,7 @@ function onTurnstileSuccess(token) {
   }, 500);
 }
 
-// ===== WHEEL SETUP =====
+// ===== WHEEL =====
 const canvas = document.getElementById('wheel-canvas');
 const ctx = canvas.getContext('2d');
 const cx = canvas.width / 2;
@@ -53,7 +48,6 @@ function drawWheel(rotation) {
     const startAngle = rotation + i * segAngle;
     const endAngle = startAngle + segAngle;
 
-    // Segment fill
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.arc(cx, cy, radius, startAngle, endAngle);
@@ -64,7 +58,6 @@ function drawWheel(rotation) {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Segment label
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(startAngle + segAngle / 2);
@@ -77,7 +70,6 @@ function drawWheel(rotation) {
     ctx.restore();
   });
 
-  // Center circle
   ctx.beginPath();
   ctx.arc(cx, cy, 44, 0, 2 * Math.PI);
   ctx.fillStyle = '#0a0a0f';
@@ -91,12 +83,10 @@ drawWheel(0);
 
 // ===== GET RESULT =====
 function getResult(angle) {
-  // Pointer sits at top of canvas = -PI/2 radians
   const segAngle = (2 * Math.PI) / SEGMENTS.length;
   const pointerAngle = -Math.PI / 2;
   const relative = ((pointerAngle - angle) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
-  const index = Math.floor(relative / segAngle) % SEGMENTS.length;
-  return SEGMENTS[index];
+  return SEGMENTS[Math.floor(relative / segAngle) % SEGMENTS.length];
 }
 
 // ===== SPIN =====
@@ -115,13 +105,10 @@ function spinWheel() {
   const startAngle = currentAngle;
   const startTime = performance.now();
 
-  function easeOut(t) {
-    return 1 - Math.pow(1 - t, 4);
-  }
+  function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
 
   function animate(now) {
-    const elapsed = now - startTime;
-    const t = Math.min(elapsed / duration, 1);
+    const t = Math.min((now - startTime) / duration, 1);
     currentAngle = startAngle + (targetAngle - startAngle) * easeOut(t);
     drawWheel(currentAngle);
 
@@ -139,52 +126,67 @@ function spinWheel() {
 
 // ===== SHOW RESULT =====
 function showResult(result) {
-  const box = document.getElementById('result-box');
   const text = document.getElementById('result-text');
-
   text.textContent = result;
+
   const c = BADGE_COLORS[result];
   if (c) {
     text.style.color = c.color;
     text.style.textShadow = `0 0 20px ${c.color}`;
   }
 
-  box.classList.add('show');
+  document.getElementById('result-box').classList.add('show');
   document.getElementById('spin-btn').disabled = false;
   document.getElementById('again-btn').style.display = 'inline-block';
 
   saveData(playerName, result);
 }
 
-// ===== SAVE & RENDER =====
-function saveData(name, result) {
-  const entry = {
-    name,
-    result,
-    time: new Date().toLocaleString('en-GB', { hour12: false }),
-  };
-  allData.unshift(entry);
-  localStorage.setItem('spinData', JSON.stringify(allData));
-  renderTable();
+// ===== API: SAVE DATA =====
+async function saveData(name, result) {
+  try {
+    await fetch('/api/spins', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, result }),
+    });
+    fetchLeaderboard();
+  } catch (err) {
+    console.error('Failed to save:', err);
+  }
 }
 
-function renderTable() {
+// ===== API: FETCH LEADERBOARD =====
+async function fetchLeaderboard() {
+  const loading = document.getElementById('loading-state');
+  const table = document.getElementById('data-table');
   const tbody = document.getElementById('data-body');
 
-  if (allData.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No data yet</td></tr>';
-    return;
-  }
+  try {
+    const res = await fetch('/api/spins');
+    const data = await res.json();
 
-  tbody.innerHTML = allData.map((row, i) => {
-    const c = BADGE_COLORS[row.result] || { bg: '#333', color: '#fff', border: '#555' };
-    return `<tr>
-      <td style="color:var(--dim);font-size:11px;">${i + 1}</td>
-      <td style="font-weight:700;">${escapeHtml(row.name)}</td>
-      <td><span class="badge" style="background:${c.bg};color:${c.color};border:1px solid ${c.border};">${row.result}</span></td>
-      <td style="color:var(--dim);font-size:11px;">${row.time}</td>
-    </tr>`;
-  }).join('');
+    loading.style.display = 'none';
+    table.style.display = 'table';
+
+    if (!data.results || data.results.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No spins yet — be the first!</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = data.results.map((row, i) => {
+      const c = BADGE_COLORS[row.result] || { bg: '#333', color: '#fff', border: '#555' };
+      return `<tr>
+        <td style="color:var(--dim);font-size:11px;">${i + 1}</td>
+        <td style="font-weight:700;">${escapeHtml(row.name)}</td>
+        <td><span class="badge" style="background:${c.bg};color:${c.color};border:1px solid ${c.border};">${row.result}</span></td>
+        <td style="color:var(--dim);font-size:11px;">${row.created_at}</td>
+      </tr>`;
+    }).join('');
+  } catch (err) {
+    loading.textContent = 'Failed to load leaderboard.';
+    console.error(err);
+  }
 }
 
 // ===== NAVIGATION =====
@@ -205,7 +207,7 @@ function startGame() {
   document.getElementById('spin-page').style.display = 'flex';
   document.getElementById('result-box').classList.remove('show');
   document.getElementById('again-btn').style.display = 'none';
-  renderTable();
+  fetchLeaderboard();
 }
 
 function goBack() {
@@ -216,13 +218,9 @@ function goBack() {
 
 // ===== UTILS =====
 function escapeHtml(str) {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// Enter key shortcut on name input
 document.getElementById('player-name').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') startGame();
 });

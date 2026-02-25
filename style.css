@@ -20,7 +20,6 @@ body {
   position: relative;
 }
 
-/* Grid background */
 body::before {
   content: '';
   position: fixed;
@@ -148,7 +147,6 @@ body::before {
   border: none;
   padding: 16px;
   cursor: pointer;
-  overflow: hidden;
   transition: transform 0.1s, filter 0.2s;
 }
 
@@ -202,7 +200,6 @@ body::before {
   margin-bottom: 40px;
 }
 
-/* Pointer arrow */
 .wheel-pointer {
   position: absolute;
   top: -18px;
@@ -254,7 +251,6 @@ body::before {
   cursor: not-allowed;
 }
 
-/* Result box */
 #result-box {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -299,14 +295,12 @@ body::before {
   text-shadow: 0 0 20px var(--accent);
 }
 
-/* Action buttons */
 .action-buttons {
   display: flex;
   gap: 16px;
   margin-bottom: 40px;
 }
 
-/* Data table */
 .data-section {
   width: 100%;
   max-width: 700px;
@@ -391,7 +385,6 @@ body::before {
   color: var(--accent2);
 }
 
-/* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
