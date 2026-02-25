@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SPIN OF FATE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <!-- Cloudflare Turnstile -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- VERIFY PAGE -->
+<div id="verify-page" class="page">
+  <div class="title-block">
+    <h1>SPIN<br>OF FATE</h1>
+    <p>Prove you're human first</p>
+  </div>
+  <div class="name-card">
+    <label>Security Check</label>
+    <p class="verify-desc">Complete the verification below to continue.</p>
+    <div class="turnstile-wrap">
+      <div class="cf-turnstile"
+           data-sitekey="YOUR_TURNSTILE_SITE_KEY"
+           data-callback="onTurnstileSuccess"
+           data-theme="dark">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- INTRO PAGE -->
+<div id="intro-page" class="page" style="display:none;">
+  <div class="title-block">
+    <h1>SPIN<br>OF FATE</h1>
+    <p>Who are you, really?</p>
+  </div>
+  <div class="name-card">
+    <label>Enter your name</label>
+    <input type="text" id="player-name" placeholder="your name..." maxlength="30" autocomplete="off" />
+    <button class="btn-enter" onclick="startGame()">ENTER →</button>
+  </div>
+</div>
+
+<!-- SPIN PAGE -->
+<div id="spin-page" class="page" style="display:none;">
+  <div class="spin-header">
+    <div class="logo">SPIN OF FATE</div>
+    <div class="player-tag">PLAYER: <span id="header-name">—</span></div>
+  </div>
+
+  <div class="wheel-wrapper">
+    <div class="wheel-pointer"></div>
+    <canvas id="wheel-canvas" width="380" height="380"></canvas>
+    <button class="spin-btn" id="spin-btn" onclick="spinWheel()">SPIN</button>
+  </div>
+
+  <div id="result-box">
+    <div class="result-label">Spin Result</div>
+    <div class="result-value" id="result-text">???</div>
+  </div>
+
+  <div class="action-buttons">
+    <button class="btn-again" onclick="spinWheel()" id="again-btn" style="display:none;">SPIN AGAIN</button>
+    <button class="btn-again" onclick="goBack()">← CHANGE PLAYER</button>
+  </div>
+
+  <div class="data-section">
+    <div class="data-title">Leaderboard</div>
+    <table id="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th>Result</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody id="data-body">
+        <tr><td colspan="4" class="empty-state">No data yet</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
