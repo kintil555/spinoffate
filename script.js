@@ -290,7 +290,7 @@ async function submitRequest() {
   status.textContent = '';
 
   try {
-    const res = await fetch('/api/spins/request', {
+    const res = await fetch('/api/request', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: playerName, requestText: text }),
     });
