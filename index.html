@@ -36,7 +36,7 @@
     <p>Who are you, really?</p>
   </div>
 
-  <!-- Sudah login Discord -->
+  <!-- Logged in with Discord -->
   <div id="discord-logged" class="name-card" style="display:none;">
     <label>Logged in as</label>
     <div class="discord-user">
@@ -47,7 +47,7 @@
     <button class="btn-logout" onclick="logout()">Logout Discord</button>
   </div>
 
-  <!-- Belum login Discord -->
+  <!-- Guest / not logged in -->
   <div id="discord-guest" class="name-card" style="display:none;">
     <label>Login or continue as guest</label>
     <a href="/api/auth/login" class="btn-discord">
@@ -68,7 +68,7 @@
   <div class="spin-header">
     <div class="logo">SPIN OF FATE</div>
     <div class="header-right">
-      <div id="spin-counter" class="spin-counter">SPIN TERSISA: 3 / 3</div>
+      <div id="spin-counter" class="spin-counter">SPINS LEFT: 3 / 3</div>
       <div class="player-tag">
         <img id="header-avatar" src="" class="header-avatar" style="display:none;" />
         PLAYER: <span id="header-name">—</span>
@@ -78,7 +78,7 @@
 
   <div class="wheel-wrapper">
     <div class="wheel-pointer"></div>
-    <canvas id="wheel-canvas" width="380" height="380"></canvas>
+    <canvas id="wheel-canvas" width="420" height="420"></canvas>
     <button class="spin-btn" id="spin-btn" onclick="spinWheel()">SPIN</button>
   </div>
 
@@ -92,6 +92,17 @@
     <button class="btn-again" onclick="goBack()">← CHANGE PLAYER</button>
   </div>
 
+  <!-- Segment Request Section -->
+  <div class="request-section">
+    <div class="data-title">Request a Segment</div>
+    <div class="request-form">
+      <input type="text" id="request-input" placeholder="suggest a new segment..." maxlength="100" autocomplete="off" />
+      <button id="request-btn" onclick="submitRequest()">SEND REQUEST</button>
+    </div>
+    <div id="request-status" class="request-status"></div>
+  </div>
+
+  <!-- Leaderboard -->
   <div class="data-section">
     <div class="data-title">Global Leaderboard</div>
     <div id="loading-state" class="empty-state">Loading...</div>
