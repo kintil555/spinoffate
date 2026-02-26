@@ -301,7 +301,11 @@ async function submitRequest() {
       status.textContent = '✅ Request sent!';
       status.style.color = '#00ff9d';
     } else {
-      status.textContent = '❌ Failed to send.';
+      if (data.error === "LIMIT_REACHED") {
+      status.textContent = `⛔ ${data.message}`;
+    } else {
+      status.textContent = "❌ Failed to send.";
+    };
       status.style.color = '#ff3a6e';
     }
   } catch {
