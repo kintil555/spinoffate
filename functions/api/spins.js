@@ -210,9 +210,9 @@ export async function onRequest(context) {
         .prepare('INSERT INTO segment_requests (name, request, created_at) VALUES (?, ?, datetime("now"))')
         .bind(displayName, cleanRequest).run();
 
-      if (env.DISCORD_WEBHOOK) {
+      if (env.DISCORD_REQUEST_WEBHOOK) {
         context.waitUntil(
-          sendDiscordRequest(env.DISCORD_WEBHOOK, displayName, avatarUrl, cleanRequest)
+          sendDiscordRequest(env.DISCORD_REQUEST_WEBHOOK, displayName, avatarUrl, cleanRequest)
         );
       }
 
