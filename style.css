@@ -140,7 +140,7 @@ body::before {
 .name-card input:focus { border-color: var(--accent); }
 .name-card input::placeholder { color: #333344; }
 
-/* ── Discord login button ── */
+/* ── Discord login ── */
 .btn-discord {
   display: flex;
   align-items: center;
@@ -163,7 +163,6 @@ body::before {
 
 .btn-discord:hover { filter: brightness(1.15); }
 
-/* ── Divider ── */
 .divider {
   display: flex;
   align-items: center;
@@ -182,7 +181,6 @@ body::before {
   background: var(--border);
 }
 
-/* ── Discord user card ── */
 .discord-user {
   display: flex;
   align-items: center;
@@ -207,7 +205,6 @@ body::before {
   color: var(--text);
 }
 
-/* ── Logout button ── */
 .btn-logout {
   background: transparent;
   border: 1px solid var(--border);
@@ -223,12 +220,8 @@ body::before {
   width: 100%;
 }
 
-.btn-logout:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
+.btn-logout:hover { border-color: var(--accent); color: var(--accent); }
 
-/* ── Enter button ── */
 .btn-enter {
   width: 100%;
   margin-top: 28px;
@@ -256,7 +249,6 @@ body::before {
   animation: fadeIn 0.5s ease;
 }
 
-/* ── Header ── */
 .spin-header {
   width: 100%;
   max-width: 700px;
@@ -290,10 +282,7 @@ body::before {
   transition: color 0.3s;
 }
 
-.spin-counter.counter-empty {
-  color: var(--accent);
-  font-weight: 700;
-}
+.spin-counter.counter-empty { color: var(--accent); font-weight: 700; }
 
 .player-tag {
   font-size: 11px;
@@ -370,7 +359,7 @@ body::before {
 
 .spin-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* ── Result box ── */
+/* ── Result ── */
 #result-box {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -415,14 +404,12 @@ body::before {
   text-shadow: 0 0 20px var(--accent);
 }
 
-/* ── Action buttons ── */
 .action-buttons {
   display: flex;
   gap: 16px;
   margin-bottom: 24px;
 }
 
-/* ── Limit banner ── */
 .limit-banner {
   width: 100%;
   max-width: 400px;
@@ -482,11 +469,29 @@ body::before {
 
 #data-table td {
   border: 1px solid var(--border);
-  padding: 12px 16px;
+  padding: 10px 16px;
   transition: background 0.2s;
+  vertical-align: middle;
 }
 
 #data-table tr:hover td { background: rgba(255,58,110,0.04); }
+
+/* Avatar di leaderboard */
+.lb-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--discord);
+  display: block;
+}
+
+.lb-avatar-placeholder {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--border);
+  display: block;
+}
 
 .badge {
   display: inline-block;
@@ -518,10 +523,7 @@ body::before {
   transition: all 0.2s;
 }
 
-.btn-again:hover {
-  border-color: var(--accent2);
-  color: var(--accent2);
-}
+.btn-again:hover { border-color: var(--accent2); color: var(--accent2); }
 
 /* ===== ANIMATIONS ===== */
 @keyframes fadeIn {
