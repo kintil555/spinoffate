@@ -3,7 +3,7 @@ const SEGMENTS = [
   'IPAD KID', 'BRAINROT KID', 'HALAL PEOPLE', 'CHARCOAL PEOPLE',
   'RACIST PEOPLE', 'GOOD PEOPLE', 'SIGMA', 'MEWING',
   '1000 AURA', 'VERY STUPID', 'TRASH', 'WORST PEOPLE',
-  'LOSER', 'CITY BOY',
+  'LOSER', 'CITY BOY', 'GOONER', 'FISH',
 ];
 
 const DAILY_LIMIT = 3;
@@ -30,6 +30,8 @@ const COLORS = [
   { bg: '#dc2626', text: '#fff' },
   { bg: '#94a3b8', text: '#111' },
   { bg: '#0ea5e9', text: '#fff' },
+  { bg: '#ff4500', text: '#fff' },
+  { bg: '#06b6d4', text: '#fff' },
 ];
 
 const BADGE_COLORS = {
@@ -53,6 +55,8 @@ const BADGE_COLORS = {
   'WORST PEOPLE':   { bg: 'rgba(220,38,38,0.15)',    color: '#dc2626', border: '#dc2626' },
   'LOSER':          { bg: 'rgba(148,163,184,0.15)',  color: '#94a3b8', border: '#94a3b8' },
   'CITY BOY':       { bg: 'rgba(14,165,233,0.15)',   color: '#0ea5e9', border: '#0ea5e9' },
+  'GOONER':         { bg: 'rgba(255,69,0,0.15)',      color: '#ff4500', border: '#ff4500' },
+  'FISH':           { bg: 'rgba(6,182,212,0.15)',     color: '#06b6d4', border: '#06b6d4' },
 };
 
 let currentAngle   = 0;
@@ -290,7 +294,7 @@ async function submitRequest() {
   status.textContent = '';
 
   try {
-    const res = await fetch('/api/request', {
+    const res = await fetch('/api/spins/request', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: playerName, requestText: text }),
     });
@@ -301,11 +305,7 @@ async function submitRequest() {
       status.textContent = '✅ Request sent!';
       status.style.color = '#00ff9d';
     } else {
-      if (data.error === "LIMIT_REACHED") {
-      status.textContent = `⛔ ${data.message}`;
-    } else {
-      status.textContent = "❌ Failed to send.";
-    };
+      status.textContent = '❌ Failed to send.';
       status.style.color = '#ff3a6e';
     }
   } catch {
