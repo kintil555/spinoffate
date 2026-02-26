@@ -181,6 +181,21 @@ body::before {
   color: var(--accent);
 }
 
+.header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.spin-counter {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--dim);
+  text-transform: uppercase;
+  transition: color 0.3s;
+}
+
 .player-tag {
   font-size: 11px;
   letter-spacing: 2px;

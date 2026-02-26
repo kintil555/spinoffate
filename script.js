@@ -21,6 +21,7 @@ const BADGE_COLORS = {
 let currentAngle = 0;
 let spinning = false;
 let playerName = '';
+let spinsRemaining = 3; // akan diupdate dari server
 
 // ===== TURNSTILE =====
 function onTurnstileSuccess(token) {
@@ -89,9 +90,68 @@ function getResult(angle) {
   return SEGMENTS[Math.floor(relative / segAngle) % SEGMENTS.length];
 }
 
+// ===== CEK LIMIT =====
+async function checkSpinLimit() {
+  try {
+    const res = await fetch('/api/spins/status');
+    const data = await res.json();
+    spinsRemaining = data.remaining ?? 3;
+    updateSpinCounter();
+
+    if (spinsRemaining <= 0) {
+      lockSpinUI();
+    }
+  } catch (err) {
+    console.error('Failed to check spin limit:', err);
+  }
+}
+
+function updateSpinCounter() {
+  const counter = document.getElementById('spin-counter');
+  if (!counter) return;
+  counter.textContent = `SPIN TERSISA: ${spinsRemaining} / 3`;
+  counter.style.color = spinsRemaining === 0 ? 'var(--accent)' : 'var(--dim)';
+}
+
+function lockSpinUI() {
+  const spinBtn = document.getElementById('spin-btn');
+  const againBtn = document.getElementById('again-btn');
+
+  spinBtn.disabled = true;
+  spinBtn.title = 'Limit harian tercapai';
+
+  if (againBtn) againBtn.style.display = 'none';
+
+  // Tampilkan pesan limit
+  let limitMsg = document.getElementById('limit-msg');
+  if (!limitMsg) {
+    limitMsg = document.createElement('div');
+    limitMsg.id = 'limit-msg';
+    limitMsg.style.cssText = `
+      background: rgba(255,58,110,0.1);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-align: center;
+      padding: 14px 24px;
+      margin-bottom: 24px;
+      text-transform: uppercase;
+    `;
+    limitMsg.textContent = '⛔ Kamu sudah spin 3x hari ini. Kembali besok!';
+    document.getElementById('result-box').insertAdjacentElement('afterend', limitMsg);
+  }
+}
+
 // ===== SPIN =====
 function spinWheel() {
   if (spinning) return;
+
+  if (spinsRemaining <= 0) {
+    lockSpinUI();
+    return;
+  }
+
   spinning = true;
 
   document.getElementById('spin-btn').disabled = true;
@@ -137,7 +197,6 @@ function showResult(result) {
 
   document.getElementById('result-box').classList.add('show');
   document.getElementById('spin-btn').disabled = false;
-  document.getElementById('again-btn').style.display = 'inline-block';
 
   saveData(playerName, result);
 }
@@ -145,14 +204,38 @@ function showResult(result) {
 // ===== API: SAVE DATA =====
 async function saveData(name, result) {
   try {
-    await fetch('/api/spins', {
+    const res = await fetch('/api/spins', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, result }),
     });
+
+    const data = await res.json();
+
+    if (res.status === 429 || data.error === 'LIMIT_REACHED') {
+      // Limit tercapai saat spin ini
+      spinsRemaining = 0;
+      updateSpinCounter();
+      lockSpinUI();
+      return;
+    }
+
+    if (data.remaining !== undefined) {
+      spinsRemaining = data.remaining;
+      updateSpinCounter();
+    }
+
+    // Tampilkan tombol spin again hanya kalau masih ada sisa
+    if (spinsRemaining > 0) {
+      document.getElementById('again-btn').style.display = 'inline-block';
+    } else {
+      lockSpinUI();
+    }
+
     fetchLeaderboard();
   } catch (err) {
     console.error('Failed to save:', err);
+    document.getElementById('again-btn').style.display = 'inline-block';
   }
 }
 
@@ -207,6 +290,9 @@ function startGame() {
   document.getElementById('spin-page').style.display = 'flex';
   document.getElementById('result-box').classList.remove('show');
   document.getElementById('again-btn').style.display = 'none';
+
+  // Cek limit spin saat masuk
+  checkSpinLimit();
   fetchLeaderboard();
 }
 
@@ -214,6 +300,10 @@ function goBack() {
   document.getElementById('spin-page').style.display = 'none';
   document.getElementById('intro-page').style.display = 'flex';
   document.getElementById('player-name').value = '';
+
+  // Reset limit msg kalau ada
+  const limitMsg = document.getElementById('limit-msg');
+  if (limitMsg) limitMsg.remove();
 }
 
 // ===== UTILS =====
