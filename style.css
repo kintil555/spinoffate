@@ -54,10 +54,7 @@ body::before {
   line-height: 1.6;
 }
 
-.turnstile-wrap {
-  display: flex;
-  justify-content: center;
-}
+.turnstile-wrap { display: flex; justify-content: center; }
 
 /* ===== INTRO PAGE ===== */
 #intro-page {
@@ -70,10 +67,7 @@ body::before {
   animation: fadeIn 0.6s ease;
 }
 
-.title-block {
-  text-align: center;
-  margin-bottom: 60px;
-}
+.title-block { text-align: center; margin-bottom: 60px; }
 
 .title-block h1 {
   font-family: 'Bebas Neue', sans-serif;
@@ -140,7 +134,7 @@ body::before {
 .name-card input:focus { border-color: var(--accent); }
 .name-card input::placeholder { color: #333344; }
 
-/* ── Discord login ── */
+/* ── Discord ── */
 .btn-discord {
   display: flex;
   align-items: center;
@@ -173,8 +167,7 @@ body::before {
   letter-spacing: 2px;
 }
 
-.divider::before,
-.divider::after {
+.divider::before, .divider::after {
   content: '';
   flex: 1;
   height: 1px;
@@ -192,8 +185,7 @@ body::before {
 }
 
 .discord-avatar {
-  width: 44px;
-  height: 44px;
+  width: 44px; height: 44px;
   border-radius: 50%;
   border: 2px solid var(--discord);
 }
@@ -267,12 +259,7 @@ body::before {
   color: var(--accent);
 }
 
-.header-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-}
+.header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 
 .spin-counter {
   font-size: 10px;
@@ -296,8 +283,7 @@ body::before {
 .player-tag span { color: var(--accent2); font-weight: 700; }
 
 .header-avatar {
-  width: 28px;
-  height: 28px;
+  width: 28px; height: 28px;
   border-radius: 50%;
   border: 1px solid var(--discord);
 }
@@ -317,8 +303,7 @@ body::before {
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
-  width: 0;
-  height: 0;
+  width: 0; height: 0;
   border-left: 14px solid transparent;
   border-right: 14px solid transparent;
   border-top: 28px solid var(--accent);
@@ -336,14 +321,13 @@ body::before {
 
 .spin-btn {
   position: absolute;
-  width: 90px;
-  height: 90px;
+  width: 80px; height: 80px;
   border-radius: 50%;
   background: #0a0a0f;
   border: 3px solid var(--accent);
   color: var(--accent);
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 16px;
+  font-size: 15px;
   letter-spacing: 2px;
   cursor: pointer;
   z-index: 5;
@@ -365,7 +349,7 @@ body::before {
   border: 1px solid var(--border);
   padding: 24px 40px;
   text-align: center;
-  max-width: 400px;
+  max-width: 460px;
   width: 100%;
   min-height: 80px;
   display: flex;
@@ -398,21 +382,17 @@ body::before {
 
 .result-value {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 48px;
+  font-size: 44px;
   letter-spacing: 4px;
   color: var(--accent);
   text-shadow: 0 0 20px var(--accent);
 }
 
-.action-buttons {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
-}
+.action-buttons { display: flex; gap: 16px; margin-bottom: 24px; }
 
 .limit-banner {
   width: 100%;
-  max-width: 400px;
+  max-width: 460px;
   background: rgba(255,58,110,0.08);
   border: 1px solid var(--accent);
   color: var(--accent);
@@ -423,6 +403,63 @@ body::before {
   margin-bottom: 24px;
   text-transform: uppercase;
   animation: fadeIn 0.4s ease;
+}
+
+/* ── Request section ── */
+.request-section {
+  width: 100%;
+  max-width: 700px;
+  margin-bottom: 40px;
+}
+
+.request-form {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.request-form input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  padding: 12px 16px;
+  outline: none;
+  transition: border-color 0.2s;
+  letter-spacing: 1px;
+}
+
+.request-form input:focus { border-color: var(--accent3); }
+.request-form input::placeholder { color: #333344; }
+
+.request-form button {
+  background: transparent;
+  border: 1px solid var(--accent3);
+  color: var(--accent3);
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  padding: 12px 20px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.request-form button:hover:not(:disabled) {
+  background: var(--accent3);
+  color: #111;
+}
+
+.request-form button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.request-status {
+  font-size: 11px;
+  letter-spacing: 2px;
+  margin-top: 10px;
+  min-height: 18px;
 }
 
 /* ── Leaderboard ── */
@@ -443,18 +480,9 @@ body::before {
   gap: 12px;
 }
 
-.data-title::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
+.data-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-#data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
+#data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 
 #data-table th {
   background: var(--surface);
@@ -476,18 +504,15 @@ body::before {
 
 #data-table tr:hover td { background: rgba(255,58,110,0.04); }
 
-/* Avatar di leaderboard */
 .lb-avatar {
-  width: 32px;
-  height: 32px;
+  width: 32px; height: 32px;
   border-radius: 50%;
   border: 1px solid var(--discord);
   display: block;
 }
 
 .lb-avatar-placeholder {
-  width: 32px;
-  height: 32px;
+  width: 32px; height: 32px;
   border-radius: 50%;
   background: var(--border);
   display: block;
