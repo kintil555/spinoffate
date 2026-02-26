@@ -2,8 +2,8 @@
  * Cloudflare Pages Function — functions/api/spins.js
  * GET  /api/spins          → leaderboard
  * GET  /api/spins/status   → spin limit status
+ * POST /api/spins/request  → submit segment request (MUST be before POST /api/spins)
  * POST /api/spins          → save spin + rate limit + Discord notif
- * POST /api/spins/request  → submit segment request
  */
 
 const CORS_HEADERS = {
@@ -114,8 +114,8 @@ async function sendDiscord(webhookUrl, name, avatar, result, remaining) {
       color:     RESULT_COLORS[result] ?? 0xffffff,
       thumbnail: avatar ? { url: avatar } : undefined,
       fields: [
-        { name: '👤 Player',          value: `**${name}**`,                   inline: true },
-        { name: '🎯 Result',          value: `**${result}**`,                 inline: true },
+        { name: '👤 Player',           value: `**${name}**`,                   inline: true },
+        { name: '🎯 Result',           value: `**${result}**`,                 inline: true },
         { name: '🎰 Spins Left Today', value: `${remaining} / ${DAILY_LIMIT}`, inline: true },
       ],
       footer:    { text: 'Spin of Fate' },
@@ -148,14 +148,16 @@ async function sendDiscordRequest(webhookUrl, name, avatar, requestText) {
 
 export async function onRequest(context) {
   const { request, env } = context;
-  const url = new URL(request.url);
+  const url      = new URL(request.url);
+  const pathname = url.pathname;
 
+  // ── CORS preflight ────────────────────────────────────────────────────────
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
 
   // ── GET /api/spins/status ─────────────────────────────────────────────────
-  if (request.method === 'GET' && url.pathname.endsWith('/status')) {
+  if (request.method === 'GET' && pathname.endsWith('/status')) {
     try {
       const ip    = getIP(request);
       const today = getToday();
@@ -183,21 +185,35 @@ export async function onRequest(context) {
   }
 
   // ── POST /api/spins/request ───────────────────────────────────────────────
-  if (request.method === 'POST' && url.pathname.endsWith('/request')) {
+  // IMPORTANT: this block MUST come before POST /api/spins
+  if (request.method === 'POST' && pathname.endsWith('/request')) {
     try {
-      // Cek session untuk nama
       let displayName = 'Anonymous';
       let avatarUrl   = null;
+
+      // Try to get name from Discord session
       const sessionRaw = getCookie(request, COOKIE_NAME);
       if (sessionRaw && env.SESSION_SECRET) {
         const session = await verifySession(sessionRaw, env.SESSION_SECRET);
-        if (session) { displayName = session.username; avatarUrl = session.avatar || null; }
+        if (session) {
+          displayName = session.username;
+          avatarUrl   = session.avatar || null;
+        }
       }
 
-      const body = await request.json();
+      // Parse body
+      let body;
+      try {
+        body = await request.json();
+      } catch {
+        return Response.json({ error: 'Invalid JSON body' }, { status: 400, headers: CORS_HEADERS });
+      }
+
       const { name, requestText } = body;
-      if (!displayName || displayName === 'Anonymous') {
-        displayName = (name || '').trim().slice(0, 30) || 'Anonymous';
+
+      // Use guest name if not logged in with Discord
+      if (displayName === 'Anonymous' && name) {
+        displayName = String(name).trim().slice(0, 30) || 'Anonymous';
       }
 
       if (!requestText || typeof requestText !== 'string' || !requestText.trim()) {
@@ -206,17 +222,22 @@ export async function onRequest(context) {
 
       const cleanRequest = requestText.trim().slice(0, 100);
 
+      // Save to DB
       await env.DB
         .prepare('INSERT INTO segment_requests (name, request, created_at) VALUES (?, ?, datetime("now"))')
-        .bind(displayName, cleanRequest).run();
+        .bind(displayName, cleanRequest)
+        .run();
 
+      // Send to separate Discord webhook for requests
       if (env.DISCORD_REQUEST_WEBHOOK) {
         context.waitUntil(
           sendDiscordRequest(env.DISCORD_REQUEST_WEBHOOK, displayName, avatarUrl, cleanRequest)
+            .catch(() => {})
         );
       }
 
       return Response.json({ ok: true }, { headers: CORS_HEADERS });
+
     } catch (err) {
       return Response.json({ error: err.message }, { status: 500, headers: CORS_HEADERS });
     }
@@ -228,6 +249,7 @@ export async function onRequest(context) {
       const ip    = getIP(request);
       const today = getToday();
 
+      // Check rate limit
       const row  = await env.DB
         .prepare('SELECT spin_count FROM ip_limits WHERE ip = ? AND date = ?')
         .bind(ip, today).first();
@@ -240,15 +262,27 @@ export async function onRequest(context) {
         );
       }
 
+      // Get session
       let displayName = null;
       let avatarUrl   = null;
       const sessionRaw = getCookie(request, COOKIE_NAME);
       if (sessionRaw && env.SESSION_SECRET) {
         const session = await verifySession(sessionRaw, env.SESSION_SECRET);
-        if (session) { displayName = session.username; avatarUrl = session.avatar || null; }
+        if (session) {
+          displayName = session.username;
+          avatarUrl   = session.avatar || null;
+        }
       }
 
-      const body = await request.json();
+      // Parse body
+      let body;
+      try {
+        body = await request.json();
+      } catch {
+        return Response.json({ error: 'Invalid JSON body' }, { status: 400, headers: CORS_HEADERS });
+      }
+
+      // Fallback to guest name
       if (!displayName) {
         const { name } = body;
         if (!name || typeof name !== 'string' || !name.trim()) {
@@ -264,24 +298,31 @@ export async function onRequest(context) {
 
       const remaining = DAILY_LIMIT - (used + 1);
 
+      // Save spin
       await env.DB
         .prepare('INSERT INTO spins (name, avatar, result, created_at) VALUES (?, ?, ?, datetime("now"))')
-        .bind(displayName, avatarUrl, result).run();
+        .bind(displayName, avatarUrl, result)
+        .run();
 
+      // Update IP counter
       await env.DB
         .prepare(`
           INSERT INTO ip_limits (ip, date, spin_count) VALUES (?, ?, 1)
           ON CONFLICT(ip, date) DO UPDATE SET spin_count = spin_count + 1
         `)
-        .bind(ip, today).run();
+        .bind(ip, today)
+        .run();
 
+      // Send Discord notification
       if (env.DISCORD_WEBHOOK) {
         context.waitUntil(
           sendDiscord(env.DISCORD_WEBHOOK, displayName, avatarUrl, result, remaining)
+            .catch(() => {})
         );
       }
 
       return Response.json({ ok: true, remaining, name: displayName }, { headers: CORS_HEADERS });
+
     } catch (err) {
       return Response.json({ error: err.message }, { status: 500, headers: CORS_HEADERS });
     }
