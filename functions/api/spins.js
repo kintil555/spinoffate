@@ -1,8 +1,9 @@
 /**
  * Cloudflare Pages Function — functions/api/spins.js
- * GET  /api/spins        → leaderboard
- * GET  /api/spins/status → sisa spin hari ini
- * POST /api/spins        → simpan spin + rate limit + notif Discord
+ * GET  /api/spins          → leaderboard
+ * GET  /api/spins/status   → spin limit status
+ * POST /api/spins          → save spin + rate limit + Discord notif
+ * POST /api/spins/request  → submit segment request
  */
 
 const CORS_HEADERS = {
@@ -11,26 +12,61 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-const VALID_RESULTS = ['GAY', 'FURRY', 'FEMBOY', 'DIH PEOPLE', 'STUPID', 'PMO'];
-const DAILY_LIMIT  = 3;
-const COOKIE_NAME  = 'sof_session';
+const VALID_RESULTS = [
+  'GAY', 'FURRY', 'FEMBOY', 'DIH PEOPLE', 'STUPID', 'PMO',
+  'IPAD KID', 'BRAINROT KID', 'HALAL PEOPLE', 'CHARCOAL PEOPLE',
+  'RACIST PEOPLE', 'GOOD PEOPLE', 'SIGMA', 'MEWING',
+  '1000 AURA', 'VERY STUPID', 'TRASH', 'WORST PEOPLE',
+  'LOSER', 'CITY BOY',
+];
+
+const DAILY_LIMIT = 3;
+const COOKIE_NAME = 'sof_session';
 
 const RESULT_COLORS = {
-  'GAY':        0xff3a6e,
-  'FURRY':      0xff7e1a,
-  'FEMBOY':     0xffe600,
-  'DIH PEOPLE': 0x00e5ff,
-  'STUPID':     0xa259ff,
-  'PMO':        0x00ff9d,
+  'GAY':            0xff3a6e,
+  'FURRY':          0xff7e1a,
+  'FEMBOY':         0xffe600,
+  'DIH PEOPLE':     0x00e5ff,
+  'STUPID':         0xa259ff,
+  'PMO':            0x00ff9d,
+  'IPAD KID':       0xff6b9d,
+  'BRAINROT KID':   0x8b5cf6,
+  'HALAL PEOPLE':   0x10b981,
+  'CHARCOAL PEOPLE':0x6b7280,
+  'RACIST PEOPLE':  0xef4444,
+  'GOOD PEOPLE':    0x22c55e,
+  'SIGMA':          0xf59e0b,
+  'MEWING':         0x3b82f6,
+  '1000 AURA':      0xfbbf24,
+  'VERY STUPID':    0xc084fc,
+  'TRASH':          0x78716c,
+  'WORST PEOPLE':   0xdc2626,
+  'LOSER':          0x94a3b8,
+  'CITY BOY':       0x0ea5e9,
 };
 
 const RESULT_EMOJI = {
-  'GAY':        '🌈',
-  'FURRY':      '🐾',
-  'FEMBOY':     '💛',
-  'DIH PEOPLE': '💧',
-  'STUPID':     '💜',
-  'PMO':        '💚',
+  'GAY':            '🌈',
+  'FURRY':          '🐾',
+  'FEMBOY':         '💛',
+  'DIH PEOPLE':     '💧',
+  'STUPID':         '💜',
+  'PMO':            '💚',
+  'IPAD KID':       '📱',
+  'BRAINROT KID':   '🧠',
+  'HALAL PEOPLE':   '☪️',
+  'CHARCOAL PEOPLE':'🪨',
+  'RACIST PEOPLE':  '🚫',
+  'GOOD PEOPLE':    '😇',
+  'SIGMA':          '😤',
+  'MEWING':         '😐',
+  '1000 AURA':      '✨',
+  'VERY STUPID':    '🤦',
+  'TRASH':          '🗑️',
+  'WORST PEOPLE':   '💀',
+  'LOSER':          '😭',
+  'CITY BOY':       '🏙️',
 };
 
 function getIP(request) {
@@ -74,22 +110,39 @@ async function verifySession(token, secret) {
 async function sendDiscord(webhookUrl, name, avatar, result, remaining) {
   const body = JSON.stringify({
     embeds: [{
-      title:     `${RESULT_EMOJI[result] ?? '🎰'}  Spin Baru!`,
+      title:     `${RESULT_EMOJI[result] ?? '🎰'}  New Spin!`,
       color:     RESULT_COLORS[result] ?? 0xffffff,
       thumbnail: avatar ? { url: avatar } : undefined,
       fields: [
-        { name: '👤 Player',             value: `**${name}**`,                   inline: true },
-        { name: '🎯 Hasil',              value: `**${result}**`,                 inline: true },
-        { name: '🎰 Sisa Spin Hari Ini', value: `${remaining} / ${DAILY_LIMIT}`, inline: true },
+        { name: '👤 Player',          value: `**${name}**`,                   inline: true },
+        { name: '🎯 Result',          value: `**${result}**`,                 inline: true },
+        { name: '🎰 Spins Left Today', value: `${remaining} / ${DAILY_LIMIT}`, inline: true },
       ],
       footer:    { text: 'Spin of Fate' },
       timestamp: new Date().toISOString(),
     }],
   });
   await fetch(webhookUrl, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body,
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body,
+  });
+}
+
+async function sendDiscordRequest(webhookUrl, name, avatar, requestText) {
+  const body = JSON.stringify({
+    embeds: [{
+      title:     '📬  New Segment Request!',
+      color:     0xffe600,
+      thumbnail: avatar ? { url: avatar } : undefined,
+      fields: [
+        { name: '👤 From',    value: `**${name}**`,        inline: true },
+        { name: '💡 Request', value: `**${requestText}**`, inline: false },
+      ],
+      footer:    { text: 'Spin of Fate — Segment Requests' },
+      timestamp: new Date().toISOString(),
+    }],
+  });
+  await fetch(webhookUrl, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body,
   });
 }
 
@@ -129,13 +182,52 @@ export async function onRequest(context) {
     }
   }
 
+  // ── POST /api/spins/request ───────────────────────────────────────────────
+  if (request.method === 'POST' && url.pathname.endsWith('/request')) {
+    try {
+      // Cek session untuk nama
+      let displayName = 'Anonymous';
+      let avatarUrl   = null;
+      const sessionRaw = getCookie(request, COOKIE_NAME);
+      if (sessionRaw && env.SESSION_SECRET) {
+        const session = await verifySession(sessionRaw, env.SESSION_SECRET);
+        if (session) { displayName = session.username; avatarUrl = session.avatar || null; }
+      }
+
+      const body = await request.json();
+      const { name, requestText } = body;
+      if (!displayName || displayName === 'Anonymous') {
+        displayName = (name || '').trim().slice(0, 30) || 'Anonymous';
+      }
+
+      if (!requestText || typeof requestText !== 'string' || !requestText.trim()) {
+        return Response.json({ error: 'Request cannot be empty' }, { status: 400, headers: CORS_HEADERS });
+      }
+
+      const cleanRequest = requestText.trim().slice(0, 100);
+
+      await env.DB
+        .prepare('INSERT INTO segment_requests (name, request, created_at) VALUES (?, ?, datetime("now"))')
+        .bind(displayName, cleanRequest).run();
+
+      if (env.DISCORD_WEBHOOK) {
+        context.waitUntil(
+          sendDiscordRequest(env.DISCORD_WEBHOOK, displayName, avatarUrl, cleanRequest)
+        );
+      }
+
+      return Response.json({ ok: true }, { headers: CORS_HEADERS });
+    } catch (err) {
+      return Response.json({ error: err.message }, { status: 500, headers: CORS_HEADERS });
+    }
+  }
+
   // ── POST /api/spins ───────────────────────────────────────────────────────
   if (request.method === 'POST') {
     try {
       const ip    = getIP(request);
       const today = getToday();
 
-      // 1. Cek rate limit
       const row  = await env.DB
         .prepare('SELECT spin_count FROM ip_limits WHERE ip = ? AND date = ?')
         .bind(ip, today).first();
@@ -143,47 +235,39 @@ export async function onRequest(context) {
 
       if (used >= DAILY_LIMIT) {
         return Response.json(
-          { error: 'LIMIT_REACHED', message: 'Kamu sudah spin 3x hari ini. Kembali besok!' },
+          { error: 'LIMIT_REACHED', message: 'You have used all 3 spins today. Come back tomorrow!' },
           { status: 429, headers: CORS_HEADERS }
         );
       }
 
-      // 2. Cek session Discord
       let displayName = null;
       let avatarUrl   = null;
-
       const sessionRaw = getCookie(request, COOKIE_NAME);
       if (sessionRaw && env.SESSION_SECRET) {
         const session = await verifySession(sessionRaw, env.SESSION_SECRET);
-        if (session) {
-          displayName = session.username;
-          avatarUrl   = session.avatar || null;
-        }
+        if (session) { displayName = session.username; avatarUrl = session.avatar || null; }
       }
 
-      // 3. Validasi body
       const body = await request.json();
       if (!displayName) {
         const { name } = body;
         if (!name || typeof name !== 'string' || !name.trim()) {
-          return Response.json({ error: 'Nama tidak boleh kosong' }, { status: 400, headers: CORS_HEADERS });
+          return Response.json({ error: 'Name cannot be empty' }, { status: 400, headers: CORS_HEADERS });
         }
         displayName = name.trim().slice(0, 30);
       }
 
       const { result } = body;
       if (!result || !VALID_RESULTS.includes(result)) {
-        return Response.json({ error: 'Result tidak valid' }, { status: 400, headers: CORS_HEADERS });
+        return Response.json({ error: 'Invalid result' }, { status: 400, headers: CORS_HEADERS });
       }
 
       const remaining = DAILY_LIMIT - (used + 1);
 
-      // 4. Simpan spin (dengan avatar)
       await env.DB
         .prepare('INSERT INTO spins (name, avatar, result, created_at) VALUES (?, ?, ?, datetime("now"))')
         .bind(displayName, avatarUrl, result).run();
 
-      // 5. Update counter IP
       await env.DB
         .prepare(`
           INSERT INTO ip_limits (ip, date, spin_count) VALUES (?, ?, 1)
@@ -191,7 +275,6 @@ export async function onRequest(context) {
         `)
         .bind(ip, today).run();
 
-      // 6. Notif Discord
       if (env.DISCORD_WEBHOOK) {
         context.waitUntil(
           sendDiscord(env.DISCORD_WEBHOOK, displayName, avatarUrl, result, remaining)
@@ -199,7 +282,6 @@ export async function onRequest(context) {
       }
 
       return Response.json({ ok: true, remaining, name: displayName }, { headers: CORS_HEADERS });
-
     } catch (err) {
       return Response.json({ error: err.message }, { status: 500, headers: CORS_HEADERS });
     }
