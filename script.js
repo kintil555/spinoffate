@@ -1,4 +1,5 @@
-const SEGMENTS = ['GAY', 'FURRY', 'FEMBOY', 'DIH PEOPLE', 'STUPID', 'PMO'];
+const SEGMENTS    = ['GAY', 'FURRY', 'FEMBOY', 'DIH PEOPLE', 'STUPID', 'PMO'];
+const DAILY_LIMIT = 3;
 
 const COLORS = [
   { bg: '#ff3a6e', text: '#fff' },
@@ -18,27 +19,27 @@ const BADGE_COLORS = {
   'PMO':        { bg: 'rgba(0,255,157,0.15)',   color: '#00ff9d', border: '#00ff9d' },
 };
 
-let currentAngle = 0;
-let spinning = false;
-let playerName = '';
-let spinsRemaining = 3; // akan diupdate dari server
+let currentAngle   = 0;
+let spinning       = false;
+let playerName     = '';
+let spinsRemaining = DAILY_LIMIT;
 
-// ===== TURNSTILE =====
-function onTurnstileSuccess(token) {
-  const verifyPage = document.getElementById('verify-page');
-  verifyPage.style.transition = 'opacity 0.5s ease';
-  verifyPage.style.opacity = '0';
+// ─── TURNSTILE ───────────────────────────────────────────────────────────────
+function onTurnstileSuccess() {
+  const page = document.getElementById('verify-page');
+  page.style.transition = 'opacity 0.5s ease';
+  page.style.opacity = '0';
   setTimeout(() => {
-    verifyPage.style.display = 'none';
+    page.style.display = 'none';
     document.getElementById('intro-page').style.display = 'flex';
   }, 500);
 }
 
-// ===== WHEEL =====
+// ─── WHEEL SETUP ─────────────────────────────────────────────────────────────
 const canvas = document.getElementById('wheel-canvas');
-const ctx = canvas.getContext('2d');
-const cx = canvas.width / 2;
-const cy = canvas.height / 2;
+const ctx    = canvas.getContext('2d');
+const cx     = canvas.width  / 2;
+const cy     = canvas.height / 2;
 const radius = cx - 8;
 
 function drawWheel(rotation) {
@@ -47,128 +48,115 @@ function drawWheel(rotation) {
 
   SEGMENTS.forEach((seg, i) => {
     const startAngle = rotation + i * segAngle;
-    const endAngle = startAngle + segAngle;
+    const endAngle   = startAngle + segAngle;
 
+    // Slice
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.arc(cx, cy, radius, startAngle, endAngle);
     ctx.closePath();
-    ctx.fillStyle = COLORS[i].bg;
+    ctx.fillStyle   = COLORS[i].bg;
     ctx.fill();
     ctx.strokeStyle = '#0a0a0f';
-    ctx.lineWidth = 2;
+    ctx.lineWidth   = 2;
     ctx.stroke();
 
+    // Label
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(startAngle + segAngle / 2);
-    ctx.textAlign = 'right';
-    ctx.fillStyle = COLORS[i].text;
-    ctx.font = `bold 13px 'Space Mono', monospace`;
+    ctx.textAlign   = 'right';
+    ctx.fillStyle   = COLORS[i].text;
+    ctx.font        = `bold 13px 'Space Mono', monospace`;
     ctx.shadowColor = 'rgba(0,0,0,0.5)';
-    ctx.shadowBlur = 4;
+    ctx.shadowBlur  = 4;
     ctx.fillText(seg, radius - 12, 5);
     ctx.restore();
   });
 
+  // Center hub
   ctx.beginPath();
   ctx.arc(cx, cy, 44, 0, 2 * Math.PI);
-  ctx.fillStyle = '#0a0a0f';
+  ctx.fillStyle   = '#0a0a0f';
   ctx.fill();
   ctx.strokeStyle = '#2a2a3a';
-  ctx.lineWidth = 2;
+  ctx.lineWidth   = 2;
   ctx.stroke();
 }
 
 drawWheel(0);
 
-// ===== GET RESULT =====
+// ─── RESULT FROM ANGLE ───────────────────────────────────────────────────────
 function getResult(angle) {
-  const segAngle = (2 * Math.PI) / SEGMENTS.length;
+  const segAngle    = (2 * Math.PI) / SEGMENTS.length;
   const pointerAngle = -Math.PI / 2;
-  const relative = ((pointerAngle - angle) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+  const relative    = ((pointerAngle - angle) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
   return SEGMENTS[Math.floor(relative / segAngle) % SEGMENTS.length];
 }
 
-// ===== CEK LIMIT =====
-async function checkSpinLimit() {
+// ─── SPIN COUNTER UI ─────────────────────────────────────────────────────────
+function updateCounter() {
+  const el = document.getElementById('spin-counter');
+  if (!el) return;
+  el.textContent = `SPIN TERSISA: ${spinsRemaining} / ${DAILY_LIMIT}`;
+  el.className   = 'spin-counter' + (spinsRemaining === 0 ? ' counter-empty' : '');
+}
+
+function showLimitBanner() {
+  if (document.getElementById('limit-banner')) return;
+  const banner = document.createElement('div');
+  banner.id    = 'limit-banner';
+  banner.className = 'limit-banner';
+  banner.textContent = '⛔ Kamu sudah spin 3x hari ini. Kembali besok!';
+  document.getElementById('action-buttons').insertAdjacentElement('afterend', banner);
+}
+
+function removeLimitBanner() {
+  const b = document.getElementById('limit-banner');
+  if (b) b.remove();
+}
+
+function lockSpin() {
+  document.getElementById('spin-btn').disabled = true;
+  document.getElementById('again-btn').style.display = 'none';
+  showLimitBanner();
+  updateCounter();
+}
+
+// ─── CHECK LIMIT ON LOAD ─────────────────────────────────────────────────────
+async function checkLimit() {
   try {
-    const res = await fetch('/api/spins/status');
+    const res  = await fetch('/api/spins/status');
     const data = await res.json();
-    spinsRemaining = data.remaining ?? 3;
-    updateSpinCounter();
-
-    if (spinsRemaining <= 0) {
-      lockSpinUI();
-    }
+    spinsRemaining = typeof data.remaining === 'number' ? data.remaining : DAILY_LIMIT;
+    updateCounter();
+    if (spinsRemaining <= 0) lockSpin();
   } catch (err) {
-    console.error('Failed to check spin limit:', err);
+    console.warn('Gagal cek limit:', err);
   }
 }
 
-function updateSpinCounter() {
-  const counter = document.getElementById('spin-counter');
-  if (!counter) return;
-  counter.textContent = `SPIN TERSISA: ${spinsRemaining} / 3`;
-  counter.style.color = spinsRemaining === 0 ? 'var(--accent)' : 'var(--dim)';
-}
-
-function lockSpinUI() {
-  const spinBtn = document.getElementById('spin-btn');
-  const againBtn = document.getElementById('again-btn');
-
-  spinBtn.disabled = true;
-  spinBtn.title = 'Limit harian tercapai';
-
-  if (againBtn) againBtn.style.display = 'none';
-
-  // Tampilkan pesan limit
-  let limitMsg = document.getElementById('limit-msg');
-  if (!limitMsg) {
-    limitMsg = document.createElement('div');
-    limitMsg.id = 'limit-msg';
-    limitMsg.style.cssText = `
-      background: rgba(255,58,110,0.1);
-      border: 1px solid var(--accent);
-      color: var(--accent);
-      font-size: 11px;
-      letter-spacing: 2px;
-      text-align: center;
-      padding: 14px 24px;
-      margin-bottom: 24px;
-      text-transform: uppercase;
-    `;
-    limitMsg.textContent = '⛔ Kamu sudah spin 3x hari ini. Kembali besok!';
-    document.getElementById('result-box').insertAdjacentElement('afterend', limitMsg);
-  }
-}
-
-// ===== SPIN =====
+// ─── SPIN ─────────────────────────────────────────────────────────────────────
 function spinWheel() {
   if (spinning) return;
-
-  if (spinsRemaining <= 0) {
-    lockSpinUI();
-    return;
-  }
+  if (spinsRemaining <= 0) { lockSpin(); return; }
 
   spinning = true;
-
   document.getElementById('spin-btn').disabled = true;
   document.getElementById('again-btn').style.display = 'none';
   document.getElementById('result-box').classList.remove('show');
   canvas.classList.add('spinning');
 
-  const extraSpins = (5 + Math.floor(Math.random() * 5)) * 2 * Math.PI;
+  const extraSpins  = (5 + Math.floor(Math.random() * 5)) * 2 * Math.PI;
   const targetAngle = currentAngle + extraSpins + Math.random() * 2 * Math.PI;
-  const duration = 4000 + Math.random() * 1000;
-  const startAngle = currentAngle;
-  const startTime = performance.now();
+  const duration    = 4000 + Math.random() * 1000;
+  const startAngle  = currentAngle;
+  const startTime   = performance.now();
 
   function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
 
   function animate(now) {
-    const t = Math.min((now - startTime) / duration, 1);
+    const t  = Math.min((now - startTime) / duration, 1);
     currentAngle = startAngle + (targetAngle - startAngle) * easeOut(t);
     drawWheel(currentAngle);
 
@@ -184,73 +172,73 @@ function spinWheel() {
   requestAnimationFrame(animate);
 }
 
-// ===== SHOW RESULT =====
+// ─── SHOW RESULT ─────────────────────────────────────────────────────────────
 function showResult(result) {
   const text = document.getElementById('result-text');
   text.textContent = result;
 
   const c = BADGE_COLORS[result];
   if (c) {
-    text.style.color = c.color;
+    text.style.color      = c.color;
     text.style.textShadow = `0 0 20px ${c.color}`;
   }
 
   document.getElementById('result-box').classList.add('show');
-  document.getElementById('spin-btn').disabled = false;
-
   saveData(playerName, result);
 }
 
-// ===== API: SAVE DATA =====
+// ─── SAVE DATA ────────────────────────────────────────────────────────────────
 async function saveData(name, result) {
   try {
-    const res = await fetch('/api/spins', {
-      method: 'POST',
+    const res  = await fetch('/api/spins', {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, result }),
+      body:    JSON.stringify({ name, result }),
     });
-
     const data = await res.json();
 
     if (res.status === 429 || data.error === 'LIMIT_REACHED') {
-      // Limit tercapai saat spin ini
       spinsRemaining = 0;
-      updateSpinCounter();
-      lockSpinUI();
+      lockSpin();
       return;
     }
 
-    if (data.remaining !== undefined) {
+    // Update sisa spin dari response server
+    if (typeof data.remaining === 'number') {
       spinsRemaining = data.remaining;
-      updateSpinCounter();
     }
 
-    // Tampilkan tombol spin again hanya kalau masih ada sisa
+    updateCounter();
+
     if (spinsRemaining > 0) {
+      document.getElementById('spin-btn').disabled = false;
       document.getElementById('again-btn').style.display = 'inline-block';
     } else {
-      lockSpinUI();
+      lockSpin();
     }
 
     fetchLeaderboard();
+
   } catch (err) {
-    console.error('Failed to save:', err);
+    console.error('Gagal simpan:', err);
+    // Tetap enable spin kalau network error
+    document.getElementById('spin-btn').disabled = false;
     document.getElementById('again-btn').style.display = 'inline-block';
   }
 }
 
-// ===== API: FETCH LEADERBOARD =====
+// ─── LEADERBOARD ─────────────────────────────────────────────────────────────
 async function fetchLeaderboard() {
   const loading = document.getElementById('loading-state');
-  const table = document.getElementById('data-table');
-  const tbody = document.getElementById('data-body');
+  const table   = document.getElementById('data-table');
+  const tbody   = document.getElementById('data-body');
 
   try {
-    const res = await fetch('/api/spins');
+    const res  = await fetch('/api/spins');
     const data = await res.json();
 
     loading.style.display = 'none';
-    table.style.display = 'table';
+    table.style.display   = 'table';
 
     if (!data.results || data.results.length === 0) {
       tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No spins yet — be the first!</td></tr>';
@@ -266,16 +254,17 @@ async function fetchLeaderboard() {
         <td style="color:var(--dim);font-size:11px;">${row.created_at}</td>
       </tr>`;
     }).join('');
+
   } catch (err) {
     loading.textContent = 'Failed to load leaderboard.';
     console.error(err);
   }
 }
 
-// ===== NAVIGATION =====
+// ─── NAVIGATION ───────────────────────────────────────────────────────────────
 function startGame() {
   const input = document.getElementById('player-name');
-  const name = input.value.trim();
+  const name  = input.value.trim();
 
   if (!name) {
     input.style.borderColor = 'var(--accent)';
@@ -285,30 +274,31 @@ function startGame() {
   }
 
   playerName = name;
-  document.getElementById('header-name').textContent = name.toUpperCase();
-  document.getElementById('intro-page').style.display = 'none';
-  document.getElementById('spin-page').style.display = 'flex';
+  document.getElementById('header-name').textContent    = name.toUpperCase();
+  document.getElementById('intro-page').style.display   = 'none';
+  document.getElementById('spin-page').style.display    = 'flex';
   document.getElementById('result-box').classList.remove('show');
-  document.getElementById('again-btn').style.display = 'none';
+  document.getElementById('again-btn').style.display    = 'none';
+  document.getElementById('spin-btn').disabled          = false;
 
-  // Cek limit spin saat masuk
-  checkSpinLimit();
+  removeLimitBanner();
+  checkLimit();
   fetchLeaderboard();
 }
 
 function goBack() {
-  document.getElementById('spin-page').style.display = 'none';
+  document.getElementById('spin-page').style.display  = 'none';
   document.getElementById('intro-page').style.display = 'flex';
   document.getElementById('player-name').value = '';
-
-  // Reset limit msg kalau ada
-  const limitMsg = document.getElementById('limit-msg');
-  if (limitMsg) limitMsg.remove();
+  removeLimitBanner();
 }
 
-// ===== UTILS =====
+// ─── UTILS ───────────────────────────────────────────────────────────────────
 function escapeHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 document.getElementById('player-name').addEventListener('keydown', (e) => {

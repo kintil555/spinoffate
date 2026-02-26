@@ -1,4 +1,4 @@
--- Run this once to create tables in your D1 database
+-- Jalankan sekali untuk setup database
 -- Command: wrangler d1 execute spinoffate-db --file=schema.sql
 
 CREATE TABLE IF NOT EXISTS spins (
@@ -9,8 +9,8 @@ CREATE TABLE IF NOT EXISTS spins (
 );
 
 CREATE TABLE IF NOT EXISTS ip_limits (
-  ip         TEXT NOT NULL,
-  date       TEXT NOT NULL,        -- format: YYYY-MM-DD
-  spin_count INTEGER DEFAULT 0,
+  ip         TEXT    NOT NULL,
+  date       TEXT    NOT NULL,
+  spin_count INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (ip, date)
 );

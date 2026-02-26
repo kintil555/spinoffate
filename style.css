@@ -150,7 +150,7 @@ body::before {
   transition: transform 0.1s, filter 0.2s;
 }
 
-.btn-enter:hover { filter: brightness(1.15); }
+.btn-enter:hover  { filter: brightness(1.15); }
 .btn-enter:active { transform: scale(0.98); }
 
 /* ===== SPIN PAGE ===== */
@@ -163,6 +163,7 @@ body::before {
   animation: fadeIn 0.5s ease;
 }
 
+/* ── Header ── */
 .spin-header {
   width: 100%;
   max-width: 700px;
@@ -196,6 +197,11 @@ body::before {
   transition: color 0.3s;
 }
 
+.spin-counter.counter-empty {
+  color: var(--accent);
+  font-weight: 700;
+}
+
 .player-tag {
   font-size: 11px;
   letter-spacing: 2px;
@@ -207,6 +213,7 @@ body::before {
   font-weight: 700;
 }
 
+/* ── Wheel ── */
 .wheel-wrapper {
   position: relative;
   display: flex;
@@ -262,10 +269,11 @@ body::before {
 }
 
 .spin-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
+/* ── Result box ── */
 #result-box {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -310,12 +318,30 @@ body::before {
   text-shadow: 0 0 20px var(--accent);
 }
 
+/* ── Action buttons ── */
 .action-buttons {
   display: flex;
   gap: 16px;
-  margin-bottom: 40px;
+  margin-bottom: 24px;
 }
 
+/* ── Limit banner ── */
+.limit-banner {
+  width: 100%;
+  max-width: 400px;
+  background: rgba(255,58,110,0.08);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-align: center;
+  padding: 14px 24px;
+  margin-bottom: 24px;
+  text-transform: uppercase;
+  animation: fadeIn 0.4s ease;
+}
+
+/* ── Leaderboard ── */
 .data-section {
   width: 100%;
   max-width: 700px;
@@ -382,6 +408,7 @@ body::before {
   letter-spacing: 2px;
 }
 
+/* ── Buttons ── */
 .btn-again {
   background: transparent;
   border: 1px solid var(--border);
@@ -400,6 +427,7 @@ body::before {
   color: var(--accent2);
 }
 
+/* ===== ANIMATIONS ===== */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
