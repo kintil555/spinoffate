@@ -2,7 +2,8 @@
  * Cloudflare Pages Function — functions/api/spins.js
  * GET         /api/spins        → ambil 50 spin terakhir (leaderboard)
  * GET         /api/spins/status → cek sisa spin hari ini berdasarkan IP
- * POST        /api/spins        → simpan spin baru (dengan rate limit 3x/hari per IP)
+ * POST        /api/spins        → simpan spin baru (rate limit 3x/hari per IP)
+ *                                 + kirim notifikasi ke Discord
  */
 
 const CORS_HEADERS = {
@@ -12,7 +13,25 @@ const CORS_HEADERS = {
 };
 
 const VALID_RESULTS = ['GAY', 'FURRY', 'FEMBOY', 'DIH PEOPLE', 'STUPID', 'PMO'];
-const DAILY_LIMIT = 3;
+const DAILY_LIMIT  = 3;
+
+const RESULT_COLORS = {
+  'GAY':        0xff3a6e,
+  'FURRY':      0xff7e1a,
+  'FEMBOY':     0xffe600,
+  'DIH PEOPLE': 0x00e5ff,
+  'STUPID':     0xa259ff,
+  'PMO':        0x00ff9d,
+};
+
+const RESULT_EMOJI = {
+  'GAY':        '🌈',
+  'FURRY':      '🐾',
+  'FEMBOY':     '💛',
+  'DIH PEOPLE': '💧',
+  'STUPID':     '💜',
+  'PMO':        '💚',
+};
 
 function getIP(request) {
   return (
@@ -23,8 +42,47 @@ function getIP(request) {
 }
 
 function getToday() {
-  // UTC date string: YYYY-MM-DD
   return new Date().toISOString().slice(0, 10);
+}
+
+// ── Kirim notifikasi ke Discord ───────────────────────────────────────────────
+async function sendDiscordNotif(webhookUrl, name, result, remaining) {
+  const color = RESULT_COLORS[result] ?? 0xffffff;
+  const emoji = RESULT_EMOJI[result]  ?? '🎰';
+
+  const payload = {
+    embeds: [
+      {
+        title: `${emoji}  Spin Baru!`,
+        color: color,
+        fields: [
+          {
+            name: '👤 Player',
+            value: `**${name}**`,
+            inline: true,
+          },
+          {
+            name: '🎯 Hasil',
+            value: `**${result}**`,
+            inline: true,
+          },
+          {
+            name: '🎰 Sisa Spin Hari Ini',
+            value: `${remaining} / ${DAILY_LIMIT}`,
+            inline: true,
+          },
+        ],
+        footer: { text: 'Spin of Fate' },
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  };
+
+  await fetch(webhookUrl, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(payload),
+  });
 }
 
 export async function onRequest(context) {
@@ -79,11 +137,10 @@ export async function onRequest(context) {
       const today = getToday();
 
       // 1. Cek limit IP hari ini
-      const row = await env.DB
+      const row  = await env.DB
         .prepare('SELECT spin_count FROM ip_limits WHERE ip = ? AND date = ?')
         .bind(ip, today)
         .first();
-
       const used = row ? row.spin_count : 0;
 
       if (used >= DAILY_LIMIT) {
@@ -106,7 +163,7 @@ export async function onRequest(context) {
 
       const cleanName = name.trim().slice(0, 30);
 
-      // 3. Simpan spin ke tabel spins
+      // 3. Simpan spin ke database
       await env.DB
         .prepare('INSERT INTO spins (name, result, created_at) VALUES (?, ?, datetime("now"))')
         .bind(cleanName, result)
@@ -123,6 +180,12 @@ export async function onRequest(context) {
         .run();
 
       const remaining = DAILY_LIMIT - (used + 1);
+
+      // 5. Kirim notif Discord — pakai env variable DISCORD_WEBHOOK
+      //    Kalau gagal kirim, spin tetap berhasil (tidak error)
+      if (env.DISCORD_WEBHOOK) {
+        sendDiscordNotif(env.DISCORD_WEBHOOK, cleanName, result, remaining).catch(() => {});
+      }
 
       return Response.json({ ok: true, remaining }, { headers: CORS_HEADERS });
 
