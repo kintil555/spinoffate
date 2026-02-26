@@ -22,20 +22,65 @@ const BADGE_COLORS = {
 let currentAngle   = 0;
 let spinning       = false;
 let playerName     = '';
+let playerAvatar   = null;
+let isDiscordUser  = false;
 let spinsRemaining = DAILY_LIMIT;
 
-// ─── TURNSTILE ───────────────────────────────────────────────────────────────
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  // Cek error dari OAuth callback
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('error')) {
+    console.warn('Auth error:', params.get('error'));
+    window.history.replaceState({}, '', '/');
+  }
+});
+
+// ─── TURNSTILE ────────────────────────────────────────────────────────────────
 function onTurnstileSuccess() {
   const page = document.getElementById('verify-page');
   page.style.transition = 'opacity 0.5s ease';
-  page.style.opacity = '0';
-  setTimeout(() => {
+  page.style.opacity    = '0';
+  setTimeout(async () => {
     page.style.display = 'none';
-    document.getElementById('intro-page').style.display = 'flex';
+    await initIntroPage();
   }, 500);
 }
 
-// ─── WHEEL SETUP ─────────────────────────────────────────────────────────────
+async function initIntroPage() {
+  try {
+    const res  = await fetch('/api/auth/me');
+    const data = await res.json();
+
+    if (data.user) {
+      // Sudah login Discord
+      isDiscordUser = true;
+      playerName    = data.user.username;
+      playerAvatar  = data.user.avatar;
+
+      document.getElementById('discord-avatar').src      = playerAvatar || '';
+      document.getElementById('discord-username').textContent = playerName;
+      document.getElementById('discord-logged').style.display = 'flex';
+      document.getElementById('discord-guest').style.display  = 'none';
+    } else {
+      // Belum login
+      isDiscordUser = false;
+      document.getElementById('discord-logged').style.display = 'none';
+      document.getElementById('discord-guest').style.display  = 'flex';
+    }
+  } catch {
+    document.getElementById('discord-logged').style.display = 'none';
+    document.getElementById('discord-guest').style.display  = 'flex';
+  }
+
+  document.getElementById('intro-page').style.display = 'flex';
+}
+
+function logout() {
+  window.location.href = '/api/auth/logout';
+}
+
+// ─── WHEEL ────────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('wheel-canvas');
 const ctx    = canvas.getContext('2d');
 const cx     = canvas.width  / 2;
@@ -50,7 +95,6 @@ function drawWheel(rotation) {
     const startAngle = rotation + i * segAngle;
     const endAngle   = startAngle + segAngle;
 
-    // Slice
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.arc(cx, cy, radius, startAngle, endAngle);
@@ -61,7 +105,6 @@ function drawWheel(rotation) {
     ctx.lineWidth   = 2;
     ctx.stroke();
 
-    // Label
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(startAngle + segAngle / 2);
@@ -74,7 +117,6 @@ function drawWheel(rotation) {
     ctx.restore();
   });
 
-  // Center hub
   ctx.beginPath();
   ctx.arc(cx, cy, 44, 0, 2 * Math.PI);
   ctx.fillStyle   = '#0a0a0f';
@@ -86,15 +128,14 @@ function drawWheel(rotation) {
 
 drawWheel(0);
 
-// ─── RESULT FROM ANGLE ───────────────────────────────────────────────────────
 function getResult(angle) {
-  const segAngle    = (2 * Math.PI) / SEGMENTS.length;
+  const segAngle     = (2 * Math.PI) / SEGMENTS.length;
   const pointerAngle = -Math.PI / 2;
-  const relative    = ((pointerAngle - angle) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+  const relative     = ((pointerAngle - angle) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
   return SEGMENTS[Math.floor(relative / segAngle) % SEGMENTS.length];
 }
 
-// ─── SPIN COUNTER UI ─────────────────────────────────────────────────────────
+// ─── COUNTER & LOCK ───────────────────────────────────────────────────────────
 function updateCounter() {
   const el = document.getElementById('spin-counter');
   if (!el) return;
@@ -104,8 +145,8 @@ function updateCounter() {
 
 function showLimitBanner() {
   if (document.getElementById('limit-banner')) return;
-  const banner = document.createElement('div');
-  banner.id    = 'limit-banner';
+  const banner     = document.createElement('div');
+  banner.id        = 'limit-banner';
   banner.className = 'limit-banner';
   banner.textContent = '⛔ Kamu sudah spin 3x hari ini. Kembali besok!';
   document.getElementById('action-buttons').insertAdjacentElement('afterend', banner);
@@ -123,7 +164,6 @@ function lockSpin() {
   updateCounter();
 }
 
-// ─── CHECK LIMIT ON LOAD ─────────────────────────────────────────────────────
 async function checkLimit() {
   try {
     const res  = await fetch('/api/spins/status');
@@ -131,8 +171,8 @@ async function checkLimit() {
     spinsRemaining = typeof data.remaining === 'number' ? data.remaining : DAILY_LIMIT;
     updateCounter();
     if (spinsRemaining <= 0) lockSpin();
-  } catch (err) {
-    console.warn('Gagal cek limit:', err);
+  } catch {
+    // ignore
   }
 }
 
@@ -156,10 +196,9 @@ function spinWheel() {
   function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
 
   function animate(now) {
-    const t  = Math.min((now - startTime) / duration, 1);
+    const t = Math.min((now - startTime) / duration, 1);
     currentAngle = startAngle + (targetAngle - startAngle) * easeOut(t);
     drawWheel(currentAngle);
-
     if (t < 1) {
       requestAnimationFrame(animate);
     } else {
@@ -172,7 +211,7 @@ function spinWheel() {
   requestAnimationFrame(animate);
 }
 
-// ─── SHOW RESULT ─────────────────────────────────────────────────────────────
+// ─── SHOW RESULT ──────────────────────────────────────────────────────────────
 function showResult(result) {
   const text = document.getElementById('result-text');
   text.textContent = result;
@@ -203,10 +242,8 @@ async function saveData(name, result) {
       return;
     }
 
-    // Update sisa spin dari response server
-    if (typeof data.remaining === 'number') {
-      spinsRemaining = data.remaining;
-    }
+    if (typeof data.remaining === 'number') spinsRemaining = data.remaining;
+    if (data.name) playerName = data.name;
 
     updateCounter();
 
@@ -218,16 +255,13 @@ async function saveData(name, result) {
     }
 
     fetchLeaderboard();
-
-  } catch (err) {
-    console.error('Gagal simpan:', err);
-    // Tetap enable spin kalau network error
+  } catch {
     document.getElementById('spin-btn').disabled = false;
     document.getElementById('again-btn').style.display = 'inline-block';
   }
 }
 
-// ─── LEADERBOARD ─────────────────────────────────────────────────────────────
+// ─── LEADERBOARD ──────────────────────────────────────────────────────────────
 async function fetchLeaderboard() {
   const loading = document.getElementById('loading-state');
   const table   = document.getElementById('data-table');
@@ -254,27 +288,37 @@ async function fetchLeaderboard() {
         <td style="color:var(--dim);font-size:11px;">${row.created_at}</td>
       </tr>`;
     }).join('');
-
-  } catch (err) {
+  } catch {
     loading.textContent = 'Failed to load leaderboard.';
-    console.error(err);
   }
 }
 
 // ─── NAVIGATION ───────────────────────────────────────────────────────────────
 function startGame() {
-  const input = document.getElementById('player-name');
-  const name  = input.value.trim();
-
-  if (!name) {
-    input.style.borderColor = 'var(--accent)';
-    input.focus();
-    setTimeout(() => (input.style.borderColor = ''), 1000);
-    return;
+  if (!isDiscordUser) {
+    const input = document.getElementById('player-name');
+    const name  = input.value.trim();
+    if (!name) {
+      input.style.borderColor = 'var(--accent)';
+      input.focus();
+      setTimeout(() => (input.style.borderColor = ''), 1000);
+      return;
+    }
+    playerName   = name;
+    playerAvatar = null;
   }
 
-  playerName = name;
-  document.getElementById('header-name').textContent    = name.toUpperCase();
+  // Set header
+  document.getElementById('header-name').textContent = playerName.toUpperCase();
+
+  const headerAvatar = document.getElementById('header-avatar');
+  if (playerAvatar) {
+    headerAvatar.src              = playerAvatar;
+    headerAvatar.style.display    = 'inline-block';
+  } else {
+    headerAvatar.style.display    = 'none';
+  }
+
   document.getElementById('intro-page').style.display   = 'none';
   document.getElementById('spin-page').style.display    = 'flex';
   document.getElementById('result-box').classList.remove('show');
@@ -289,18 +333,18 @@ function startGame() {
 function goBack() {
   document.getElementById('spin-page').style.display  = 'none';
   document.getElementById('intro-page').style.display = 'flex';
-  document.getElementById('player-name').value = '';
+  if (!isDiscordUser) document.getElementById('player-name').value = '';
   removeLimitBanner();
 }
 
-// ─── UTILS ───────────────────────────────────────────────────────────────────
+// ─── UTILS ────────────────────────────────────────────────────────────────────
 function escapeHtml(str) {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-document.getElementById('player-name').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') startGame();
-});
+const nameInput = document.getElementById('player-name');
+if (nameInput) {
+  nameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') startGame();
+  });
+}
