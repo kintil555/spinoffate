@@ -28,7 +28,6 @@ let spinsRemaining = DAILY_LIMIT;
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
-  // Cek error dari OAuth callback
   const params = new URLSearchParams(window.location.search);
   if (params.get('error')) {
     console.warn('Auth error:', params.get('error'));
@@ -53,17 +52,15 @@ async function initIntroPage() {
     const data = await res.json();
 
     if (data.user) {
-      // Sudah login Discord
       isDiscordUser = true;
       playerName    = data.user.username;
       playerAvatar  = data.user.avatar;
 
-      document.getElementById('discord-avatar').src      = playerAvatar || '';
+      document.getElementById('discord-avatar').src           = playerAvatar || '';
       document.getElementById('discord-username').textContent = playerName;
       document.getElementById('discord-logged').style.display = 'flex';
       document.getElementById('discord-guest').style.display  = 'none';
     } else {
-      // Belum login
       isDiscordUser = false;
       document.getElementById('discord-logged').style.display = 'none';
       document.getElementById('discord-guest').style.display  = 'flex';
@@ -215,13 +212,11 @@ function spinWheel() {
 function showResult(result) {
   const text = document.getElementById('result-text');
   text.textContent = result;
-
   const c = BADGE_COLORS[result];
   if (c) {
     text.style.color      = c.color;
     text.style.textShadow = `0 0 20px ${c.color}`;
   }
-
   document.getElementById('result-box').classList.add('show');
   saveData(playerName, result);
 }
@@ -275,14 +270,19 @@ async function fetchLeaderboard() {
     table.style.display   = 'table';
 
     if (!data.results || data.results.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No spins yet — be the first!</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No spins yet — be the first!</td></tr>';
       return;
     }
 
     tbody.innerHTML = data.results.map((row, i) => {
-      const c = BADGE_COLORS[row.result] || { bg: '#333', color: '#fff', border: '#555' };
+      const c          = BADGE_COLORS[row.result] || { bg: '#333', color: '#fff', border: '#555' };
+      const avatarHtml = row.avatar
+        ? `<img src="${escapeHtml(row.avatar)}" class="lb-avatar" alt="" />`
+        : `<div class="lb-avatar-placeholder"></div>`;
+
       return `<tr>
         <td style="color:var(--dim);font-size:11px;">${i + 1}</td>
+        <td>${avatarHtml}</td>
         <td style="font-weight:700;">${escapeHtml(row.name)}</td>
         <td><span class="badge" style="background:${c.bg};color:${c.color};border:1px solid ${c.border};">${row.result}</span></td>
         <td style="color:var(--dim);font-size:11px;">${row.created_at}</td>
@@ -308,15 +308,14 @@ function startGame() {
     playerAvatar = null;
   }
 
-  // Set header
   document.getElementById('header-name').textContent = playerName.toUpperCase();
 
   const headerAvatar = document.getElementById('header-avatar');
   if (playerAvatar) {
-    headerAvatar.src              = playerAvatar;
-    headerAvatar.style.display    = 'inline-block';
+    headerAvatar.src           = playerAvatar;
+    headerAvatar.style.display = 'inline-block';
   } else {
-    headerAvatar.style.display    = 'none';
+    headerAvatar.style.display = 'none';
   }
 
   document.getElementById('intro-page').style.display   = 'none';
