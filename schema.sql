@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS spins (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   name       TEXT    NOT NULL,
   result     TEXT    NOT NULL,
+  avatar     TEXT    DEFAULT NULL,
   created_at TEXT    NOT NULL
 );
 
