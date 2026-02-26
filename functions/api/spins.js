@@ -121,7 +121,7 @@ export async function onRequest(context) {
   if (request.method === 'GET') {
     try {
       const { results } = await env.DB
-        .prepare('SELECT name, result, created_at FROM spins ORDER BY id DESC LIMIT 50')
+        .prepare('SELECT name, avatar, result, created_at FROM spins ORDER BY id DESC LIMIT 50')
         .all();
       return Response.json({ results }, { headers: CORS_HEADERS });
     } catch (err) {
@@ -157,7 +157,7 @@ export async function onRequest(context) {
         const session = await verifySession(sessionRaw, env.SESSION_SECRET);
         if (session) {
           displayName = session.username;
-          avatarUrl   = session.avatar;
+          avatarUrl   = session.avatar || null;
         }
       }
 
@@ -178,10 +178,10 @@ export async function onRequest(context) {
 
       const remaining = DAILY_LIMIT - (used + 1);
 
-      // 4. Simpan spin
+      // 4. Simpan spin (dengan avatar)
       await env.DB
-        .prepare('INSERT INTO spins (name, result, created_at) VALUES (?, ?, datetime("now"))')
-        .bind(displayName, result).run();
+        .prepare('INSERT INTO spins (name, avatar, result, created_at) VALUES (?, ?, ?, datetime("now"))')
+        .bind(displayName, avatarUrl, result).run();
 
       // 5. Update counter IP
       await env.DB
